@@ -5,9 +5,20 @@ spring:
   application:
     name: "configserver"
   profiles:
-    active: native
+    #active: native # Used in case reading files from class path inside config server
+    active: git # Used in case reading files from git repo
   cloud:
     config:
       server:
-        native:
-          search-locations: "classpath:/config"
+        #native:
+        #  search-locations: "classpath:/config"
+        git:
+          uri: "https://github.com/MBA90/config-app.git"
+          default-label: main
+          timeout: 5
+          force-pull: true
+          clone-on-start: true
+
+# this will enable encryption and decryption in cloud config server and provide implementation the api  /encrypt and /decrypt
+encrypt:
+  key: "Password@123"
