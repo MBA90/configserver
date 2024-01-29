@@ -1,0 +1,99 @@
+services:
+  rabbit:
+    image: rabbitmq:3.12-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - mba90
+  configserver:
+    image: "mba90/configserver:v2"
+    container_name: configserver-ms
+    ports:
+      - "8071:8071"
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    environment:
+      SPRING_RABBITMQ_HOST: rabbit
+    healthcheck:
+      test: "curl --fail --silent localhost:8071/actuator/health/readiness | grep UP || exit 1"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - mba90
+  accounts:
+    image: "mba90/accounts:v2"
+    container_name: accounts-ms
+    ports:
+      - "8080:8080"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: accounts
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_RABBITMQ_HOST: rabbit
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - mba90 
+  cards:
+    image: "mba90/cards:v2"
+    container_name: cards-ms
+    ports:
+      - "9000:9000"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: cards
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_RABBITMQ_HOST: rabbit
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - mba90
+  loans:
+    image: "mba90/loans:v2"
+    container_name: loans-ms
+    ports:
+      - "8090:8090"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: loans
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_RABBITMQ_HOST: rabbit
+    deploy:
+      resources:
+        limits:
+          memory: 500m
+    networks:
+      - mba90
+
+networks:
+  mba90:
+    driver: "bridge"
+
